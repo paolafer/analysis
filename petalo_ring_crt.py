@@ -1,4 +1,11 @@
 import numpy as np
+"""
+code: petalo_ring_crt.py
+description: the code 1. select events with two photoelectric interactions in the ring
+                      2. reconstruct the interaction points
+                      3. calculate the CRT.
+"""
+
 import pandas as pd
 import tables as tb
 import random
