@@ -182,7 +182,6 @@ for ifile in range(start, start+numb):
                 sns_over_thr, charges_over_thr  = find_SiPMs_over_thresholds(this_event_wvf, rpos_threshold)
   
                 if len(charges_over_thr) == 0:
-                    evt_no_pos += 1
                     continue
 
                 #max_sns = sns_over_thr[np.argmax(charges_over_thr)]

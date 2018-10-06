@@ -44,7 +44,7 @@ def find_SiPMs_over_thresholds(this_event_wvf, threshold):
     sns_dict = list(this_event_wvf.values())[0]
     tot_charges = np.array(list(map(lambda x: sum(x.charges), list(sns_dict.values()))))
     sns_ids = np.array(list(sns_dict.keys()))
-    
+
     indices_over_thr = (tot_charges > threshold)
     sns_over_thr = sns_ids[indices_over_thr]
     charges_over_thr = tot_charges[indices_over_thr]
@@ -102,7 +102,6 @@ for ifile in range(start, start+numb):
             this_event_dict = read_mcinfo(h5in, (evt, evt+1))
             bin_width   = read_SiPM_bin_width_from_conf(h5in)
             this_event_wvf = go_through_file(h5in, h5in.root.MC.waveforms, (evt, evt+1), bin_width, 'data')
-            
             event_number = h5in.root.MC.extents[evt]['evt_number']
 
             part_dict = list(this_event_dict.values())[0]
@@ -137,7 +136,7 @@ for ifile in range(start, start+numb):
             if energy1 or energy2:
                 for threshold in range(0, nsteps):
                     sns_over_thr, charges_over_thr  = find_SiPMs_over_thresholds(this_event_wvf, threshold + thr_start)
-  
+
                     if len(charges_over_thr) == 0:
                         continue
 
