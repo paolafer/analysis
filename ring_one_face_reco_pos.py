@@ -60,11 +60,12 @@ start = int(sys.argv[1])
 numb = int(sys.argv[2])
 max_cut = int(sys.argv[3])
 
-base_file = '/home/paolafer/data/MC/pet/full_ring_iradius15cm_depth3cm_pitch4mm_one_face.{0}.pet.h5'
-evt_file = '/home/paolafer/analysis/petalo/full_ring_iradius15cm_depth3cm_pitch4mm_one_face_phot_reco_pos_{0}_{1}_{2}'.format(start, numb, max_cut)
+base_file = '/data_extra/paolafer/SimMC/pet/full_ring_iradius15cm_depth3cm_pitch5mm_one_face.{0}.pet.h5'
+evt_file = '/home/paolafer/analysis/petalo/full_ring_iradius15cm_depth3cm_pitch5mm_one_face_phot_reco_pos_{0}_{1}_{2}'.format(start, numb, max_cut)
 
-rpos_file = '/home/paolafer/analysis/petalo/tables/r_table_iradius15cm_thr2pes_4mm_depth3cm_one_face.h5'
 rpos_threshold = 2
+rpos_file = '/home/paolafer/analysis/petalo/tables/r_table_iradius15cm_thr{}pes_pitch5mm_depth3cm_one_face.h5'.format(rpos_threshold)
+
 Rpos = load_rpos(rpos_file,
                  group = "Radius",
                  node  = "f{}pes200bins".format(rpos_threshold))
