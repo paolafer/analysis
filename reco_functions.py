@@ -6,6 +6,7 @@ import sys
 import os
 
 from invisible_cities.core.system_of_units_c import units
+from invisible_cities.evm.event_model import Waveform
 
 from   antea.utils.table_functions import load_rpos
 import antea.database.load_db as db
@@ -29,7 +30,7 @@ def find_closest_sipm(given_pos, sensor_pos, sns_over_thr, charges_over_thr):
         if dist < min_dist:
             min_dist = dist
             min_sns = sns_id
-                
+
     return min_sns
 
 def barycenter_3D(pos, qs):
@@ -42,25 +43,26 @@ def barycenter_3D(pos, qs):
 
     if not len(pos)   : raise SipmEmptyList
     if np.sum(qs) == 0: raise SipmZeroCharge
-        
+
     return np.average(pos, weights=qs, axis=0)
 
 
 def calculate_phi_z_pos(pos, q, phi_z_thr):
-    
+
     indices_over_thr = (q > phi_z_thr)
     q_over_thr       = q[indices_over_thr]
     pos_over_thr     = pos[indices_over_thr]
-    
+
     cartesian_pos = barycenter_3D(pos_over_thr, q_over_thr)
-    
+
     return np.arctan2(cartesian_pos[1], cartesian_pos[0]), cartesian_pos[2]
 
 def find_SiPMs_over_thresholds(current_charge, threshold):
 
-    sns_ids = np.array(current_charge.columns.tolist())
-    tot_charges = np.array([current_charge[sns_id].values[0] for sns_id in sns_ids])
-    
+    sns_dict = list(current_charge.values())[0]
+    tot_charges = np.array(list(map(lambda x: sum(x.charges), list(sns_dict.values()))))
+    sns_ids = np.array(list(sns_dict.keys()))
+
     indices_over_thr = (tot_charges > threshold)
     sns_over_thr = sns_ids[indices_over_thr]
     charges_over_thr = tot_charges[indices_over_thr]
@@ -73,7 +75,7 @@ Rpos_table = load_rpos(rpos_file,
                        node  = "f{}pes200bins".format(rpos_threshold))
 
 
-def find_reco_pos(current_charge, r_threshold, zphi_threshold):
+def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: float, zphi_threshold:float) -> (float, float, float, Tuple(float, float, float)):
 
     ### read sensor positions from database
     DataSiPM = db.DataSiPM('petalo', 0)
@@ -81,18 +83,18 @@ def find_reco_pos(current_charge, r_threshold, zphi_threshold):
 
     ### first, find R
     sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, r_threshold)
-  
+
     if len(charges_over_thr) == 0:
         return
 
     q = []
     pos_phi = []
 
-    for sns_id, charge in zip(sns_over_thr, charges_over_thr):                       
+    for sns_id, charge in zip(sns_over_thr, charges_over_thr):
         x = DataSiPM_idx.loc[sns_id].X
         y = DataSiPM_idx.loc[sns_id].Y
         z = DataSiPM_idx.loc[sns_id].Z
-        
+
         pos_cyl = (np.sqrt(x*x + y*y), np.arctan2(y, x), z)
         q.append(charge)
         pos_phi.append(pos_cyl[1])
@@ -111,20 +113,22 @@ def find_reco_pos(current_charge, r_threshold, zphi_threshold):
 
     q   = []
     pos = []
-                
+
     for sns_id, charge in zip(sns_over_thr, charges_over_thr):
         x = DataSiPM_idx.loc[sns_id].X
         y = DataSiPM_idx.loc[sns_id].Y
         z = DataSiPM_idx.loc[sns_id].Z
 
-        pos     = [x, y, z]
-        pos_cyl = (np.sqrt(x*x + y*y), np.arctan2(y, x), z)
+        pos_cart = [x, y, z]
+        pos_cyl  = (np.sqrt(x*x + y*y), np.arctan2(y, x), z)
 
-        pos.append(pos)
+        pos.append(pos_cart)
         q.append(charge)
-                                         
-        
-    reco_r    = Rpos(np.sqrt(var_phi)).value 
+
+
+    reco_r    = Rpos_table(np.sqrt(var_phi)).value
     reco_cart = barycenter_3D(pos, q)
     reco_phi  = np.arctan2(reco_cart[1], reco_cart[0])
     reco_z    = reco_cart[2]
+
+    return reco_r, reco_phi, reco_z, reco_cart
