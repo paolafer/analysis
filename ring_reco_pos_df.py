@@ -18,11 +18,6 @@ def greater_or_equal(f1, f2, allowed_error=1.e-6):
     return f1 >= f2 - allowed_error
 
 
-def from_cartesian_to_cyl(pos):
-    cyl_pos = np.array([np.sqrt(pos[0]**2+pos[1]**2), np.arctan2(pos[1], pos[0]), pos[2]]).transpose()
-    return cyl_pos
-
-
 def from_cartesian_to_cyl_v(pos):
     cyl_pos = np.array([np.sqrt(pos[:,0]**2+pos[:,1]**2), np.arctan2(pos[:,1], pos[:,0]), pos[:,2]]).transpose()
     return cyl_pos
@@ -155,7 +150,7 @@ for ifile in range(start, start+numb):
         sel_all         = sel_vol_name_e[sel_vol_name_e.mother_id.isin(primaries.particle_id.values)]
         if len(sel_all) == 0: continue
 
-            ### now that I have selected the event, let's calculate the true position
+        ### now that I have selected the event, let's calculate the true position
         ids      = sel_all.particle_id.values
         sel_hits = find_given_particle_hits(ids, evt_hits)
 
@@ -164,8 +159,6 @@ for ifile in range(start, start+numb):
         for _, df in sel_hits:
             hit_positions = np.array([df.x, df.y, df.z]).transpose()
             true_pos.append(np.average(hit_positions, axis=0, weights=df.energy))
-                #    print('*** True position(s) ***')
-                #    print(true_pos)
 
         waveforms = sel_df_r[sel_df_r.event_id == evt]
         if len(waveforms) == 0: continue
