@@ -8,7 +8,6 @@ import tables as tb
 import antea.database.load_db as db
 from   antea.utils.table_functions import load_rpos
 
-import utils.histo_functions as myhf
 
 def lower_or_equal(f1, f2, allowed_error=1.e-6):
     return f1 <= f2 + allowed_error
@@ -175,7 +174,7 @@ for ifile in range(start, start+numb):
             var_phi2 = np.average((pos2_phi-mean_phi)**2, weights=q2)
 
         waveforms_z_phi = sel_df_z_phi[sel_df_z_phi.event_id == evt]
-        if len(waveforms) == 0: continue
+        if len(waveforms_z_phi) == 0: continue
 
         q1, q2, pos1, pos2 = assign_sipms_to_gammas(waveforms_z_phi, true_pos, DataSiPM_idx)
 
