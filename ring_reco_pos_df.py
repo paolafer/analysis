@@ -27,7 +27,7 @@ def find_SiPMs_over_thresholds(df, threshold):
     tot_charges_df = df.groupby(['event_id','sensor_id'])[['charge']].sum()
     return tot_charges_df[tot_charges_df.charge > threshold].reset_index()
 
-def find_closest_sipm(given_pos, sns_positions):
+def find_closest_sipm(given_pos, sns_positions, sipms):
     ### Find the closest SiPM to the true average point
     subtr = np.subtract(given_pos, sns_positions)
 
@@ -49,8 +49,7 @@ def assign_sipms_to_gammas(waveforms, true_pos, DataSiPM_idx):
     sns_positions = np.array([sipms.X, sipms.Y, sipms.Z]).transpose()
     sns_charges   = waveforms.charge
 
-    sns_closest_pos = [np.array([find_closest_sipm(pos, sns_positions).X.values, find_closest_sipm(pos, sns_positions).Y.values, \
-                                 find_closest_sipm(pos, sns_positions).Z.values]).transpose()[0] for pos in true_pos]
+    sns_closest_pos = [np.array([find_closest_sipm(pos, sns_positions, sipms).X.values, find_closest_sipm(pos, sns_positions, sipms).Y.values, find_closest_sipm(pos, sns_positions, sipms).Z.values]).transpose()[0] for pos in true_pos]
 
     q1, q2     = [], []
     pos1, pos2 = [], []
