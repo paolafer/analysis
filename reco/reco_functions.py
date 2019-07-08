@@ -70,12 +70,8 @@ def find_SiPMs_over_thresholds(current_charge, threshold):
     return sns_over_thr, charges_over_thr
 
 
-Rpos_table = load_rpos(rpos_file,
-                       group = "Radius",
-                       node  = "f{}pes200bins".format(rpos_threshold))
 
-
-def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: float, zphi_threshold:float) -> (float, float, float, Tuple(float, float, float)):
+def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: float, zphi_threshold:float, rpos_table, db) -> (float, float, float, Tuple[float, float, float]):
 
     ### read sensor positions from database
     DataSiPM = db.DataSiPM('petalo', 0)
@@ -126,7 +122,7 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
         q.append(charge)
 
 
-    reco_r    = Rpos_table(np.sqrt(var_phi)).value
+    reco_r    = rpos_table(np.sqrt(var_phi)).value
     reco_cart = barycenter_3D(pos, q)
     reco_phi  = np.arctan2(reco_cart[1], reco_cart[0])
     reco_z    = reco_cart[2]
