@@ -149,6 +149,9 @@ for ifile in range(start, start+numb):
             hit_positions = np.array([df.x, df.y, df.z]).transpose()
             true_pos.append(np.average(hit_positions, axis=0, weights=df.energy))
 
+        if (len(true_pos) == 1) & (evt_hits.energy.sum() > 0.513):
+            continue
+
         waveforms = sel_df[sel_df.event_id == evt]
         if len(waveforms) == 0: continue
 
@@ -156,6 +159,9 @@ for ifile in range(start, start+numb):
 
         if len(pos1) > 0:
             pos_phi  = from_cartesian_to_cyl_v(np.array(pos1))[:,1]
+            diff_sign = min(pos_phi ) < 0 < max(pos_phi)
+            if diff_sign & (np.abs(np.min(pos_phi))>np.pi/2):
+                pos_phi[pos_phi<0] = np.pi + np.pi + pos_phi[pos_phi<0]
             mean_phi = np.average(pos_phi, weights=q1)
             var_phi  = np.average((pos_phi-mean_phi)**2, weights=q1)
 
@@ -180,6 +186,9 @@ for ifile in range(start, start+numb):
 
         if len(pos2) > 0:
             pos_phi  = from_cartesian_to_cyl_v(np.array(pos2))[:,1]
+            diff_sign = min(pos_phi ) < 0 < max(pos_phi)
+            if diff_sign & (np.abs(np.min(pos_phi))>np.pi/2):
+                pos_phi[pos_phi<0] = np.pi + np.pi + pos_phi[pos_phi<0]
             mean_phi = np.average(pos_phi, weights=q2)
             var_phi  = np.average((pos_phi-mean_phi)**2, weights=q2)
 
