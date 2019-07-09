@@ -97,6 +97,9 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
 
     var_phi = None
 
+    diff_sign = min(pos_phi ) < 0 < max(pos_phi)
+    if diff_sign & (np.abs(np.min(pos_phi))>np.pi/2):
+        pos_phi[pos_phi<0] = np.pi + np.pi + pos_phi[pos_phi<0]
     mean_phi = np.average(pos_phi, weights=q)
     var_phi  = np.average((pos_phi-mean_phi)**2, weights=q)
 
