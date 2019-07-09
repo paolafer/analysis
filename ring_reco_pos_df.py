@@ -46,7 +46,7 @@ def find_given_particle_hits(p_ids, hits):
 def assign_sipms_to_gammas(waveforms, true_pos, DataSiPM_idx):
 
     sipms = DataSiPM_idx.loc[waveforms.sensor_id]
-    sns_positions = np.array([sipms.X, sipms.Y, sipms.Z]).transpose()
+    sns_positions = np.array([sipms.X.values, sipms.Y.values, sipms.Z.values]).transpose()
     sns_charges   = waveforms.charge
 
     sns_closest_pos = [np.array([find_closest_sipm(pos, sns_positions, sipms).X.values, find_closest_sipm(pos, sns_positions, sipms).Y.values, find_closest_sipm(pos, sns_positions, sipms).Z.values]).transpose()[0] for pos in true_pos]
@@ -116,9 +116,8 @@ for ifile in range(start, start+numb):
     particles = pd.read_hdf(file_name, 'MC/particles')
     hits      = pd.read_hdf(file_name, 'MC/hits')
 
-    r_thr, z_phi_thr = max_cut, max_cut
-    sel_df_r      = find_SiPMs_over_thresholds(full_sns_response, threshold=r_thr)
-    sel_df_z_phi  = find_SiPMs_over_thresholds(full_sns_response, threshold=z_phi_thr)
+    sel_df_r      = find_SiPMs_over_thresholds(full_sns_response, threshold=rpos_threshold)
+    sel_df_z_phi  = find_SiPMs_over_thresholds(full_sns_response, threshold=max_cut)
 
     events = particles.event_id.unique()
 
@@ -134,16 +133,11 @@ for ifile in range(start, start+numb):
         sel_vol_name = evt_parts[sel_volume & sel_name]
 
         ids      = sel_vol_name.particle_id.values
-        #sel_hits             = evt_hits[evt_hits.particle_id.isin(ids)]
         sel_hits = find_given_particle_hits(ids, evt_hits)
         energies = sel_hits.groupby(['particle_id'])[['energy']].sum()
         energies = energies.reset_index()
-        #print(energies)
-        #energy_sel  = energies[np.isclose(energies.energy, 0.476443, atol=1.e-6)]
         energy_sel  = energies[greater_or_equal(energies.energy, 0.476443, allowed_error=1.e-6)]
-        #print(energy_sel)
         sel_vol_name_e  = sel_vol_name[sel_vol_name.particle_id.isin(energy_sel.particle_id)]
-        #print(sel_vol_name_e)
 
         sel_all         = sel_vol_name_e[sel_vol_name_e.mother_id.isin(primaries.particle_id.values)]
         if len(sel_all) == 0: continue
@@ -158,6 +152,9 @@ for ifile in range(start, start+numb):
             hit_positions = np.array([df.x, df.y, df.z]).transpose()
             true_pos.append(np.average(hit_positions, axis=0, weights=df.energy))
 
+        if (len(true_pos) == 1) & (evt_hits.energy.sum() > 0.513):
+            continue
+
         waveforms = sel_df_r[sel_df_r.event_id == evt]
         if len(waveforms) == 0: continue
 
@@ -165,10 +162,16 @@ for ifile in range(start, start+numb):
         var_phi1 = var_phi2 = None
         if len(pos1) > 0:
             pos1_phi = from_cartesian_to_cyl_v(np.array(pos1))[:,1]
+            diff_sign = min(pos1_phi ) < 0 < max(pos1_phi)
+            if diff_sign & (np.abs(np.min(pos1_phi))>np.pi/2.):
+                pos1_phi[pos1_phi<0] = np.pi + np.pi + pos1_phi[pos1_phi<0]
             mean_phi = np.average(pos1_phi, weights=q1)
             var_phi1 = np.average((pos1_phi-mean_phi)**2, weights=q1)
         if len(pos2) > 0:
             pos2_phi = from_cartesian_to_cyl_v(np.array(pos2))[:,1]
+            diff_sign = min(pos2_phi ) < 0 < max(pos2_phi)
+            if diff_sign & (np.abs(np.min(pos2_phi))>np.pi/2.):
+       	        pos2_phi[pos2_phi<0] = np.pi + np.pi + pos2_phi[pos2_phi<0]
             mean_phi = np.average(pos2_phi, weights=q2)
             var_phi2 = np.average((pos2_phi-mean_phi)**2, weights=q2)
 
@@ -200,6 +203,7 @@ for ifile in range(start, start+numb):
             true_z1.append(1.e9)
             photo_response1.append(1.e9)
             touched_sipms1.append(1.e9)
+            event_ids.append(evt)
 
         if len(pos2) > 0 and var_phi2:
             reco_r    = Rpos(np.sqrt(var_phi2)).value
@@ -214,7 +218,6 @@ for ifile in range(start, start+numb):
             true_z2.append(true_pos[1][2])
             photo_response2.append(sum(q2))
             touched_sipms2.append(len(q2))
-            event_ids.append(evt)
         else:
             reco_x2.append(1.e9)
             reco_y2.append(1.e9)
