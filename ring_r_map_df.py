@@ -134,12 +134,8 @@ for ifile in range(start, start+numb):
         sel_hits = find_given_particle_hits(ids, evt_hits)
         energies = sel_hits.groupby(['particle_id'])[['energy']].sum()
         energies = energies.reset_index()
-        #print(energies)
-        #energy_sel  = energies[np.isclose(energies.energy, 0.476443, atol=1.e-6)]
         energy_sel  = energies[greater_or_equal(energies.energy, 0.476443, allowed_error=1.e-6)]
-        #print(energy_sel)
         sel_vol_name_e  = sel_vol_name[sel_vol_name.particle_id.isin(energy_sel.particle_id)]
-        #print(sel_vol_name_e)
 
         sel_all         = sel_vol_name_e[sel_vol_name_e.mother_id.isin(primaries.particle_id.values)]
         if len(sel_all) == 0: continue
@@ -154,6 +150,9 @@ for ifile in range(start, start+numb):
             hit_positions = np.array([df.x, df.y, df.z]).transpose()
             true_pos.append(np.average(hit_positions, axis=0, weights=df.energy))
 
+        if (len(true_pos) == 1) & (evt_hits.energy.sum() > 0.513):
+            continue
+
         for threshold in range(0, nsteps):
             sel_df = find_SiPMs_over_thresholds(full_sns_response, threshold + thr_start)
 
@@ -164,6 +163,9 @@ for ifile in range(start, start+numb):
 
             if len(pos1) > 0:
                 pos_phi  = from_cartesian_to_cyl_v(np.array(pos1))[:,1]
+                diff_sign = min(pos_phi ) < 0 < max(pos_phi)
+                if diff_sign & (np.abs(np.min(pos_phi))>np.pi/2):
+                    pos_phi[pos_phi<0] = np.pi + np.pi + pos_phi[pos_phi<0]
                 mean_phi = np.average(pos_phi, weights=q1)
                 var_phi  = np.average((pos_phi-mean_phi)**2, weights=q1)
 
@@ -188,6 +190,9 @@ for ifile in range(start, start+numb):
 
             if len(pos2) > 0:
                 pos_phi  = from_cartesian_to_cyl_v(np.array(pos2))[:,1]
+                diff_sign = min(pos_phi ) < 0 < max(pos_phi)
+                if diff_sign & (np.abs(np.min(pos_phi))>np.pi/2):
+                    pos_phi[pos_phi<0] = np.pi + np.pi + pos_phi[pos_phi<0]
                 mean_phi = np.average(pos_phi, weights=q2)
                 var_phi  = np.average((pos_phi-mean_phi)**2, weights=q2)
 
