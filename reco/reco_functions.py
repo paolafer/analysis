@@ -20,6 +20,17 @@ from typing import Tuple
 from typing import Dict
 
 
+def sensor_position(h5in):
+    """Returns dictionary that stores the position of all the sensors
+    in cartesian coordinates
+    """
+    sipms    = h5in.root.MC.sensor_positions[:]
+    sens_pos = {}
+    for sipm in sipms:
+        sens_pos[sipm[0]] = (sipm[1], sipm[2], sipm[3])
+    return sens_pos
+
+
 def find_closest_sipm(given_pos, sensor_pos, sns_over_thr, charges_over_thr):
     ### Find the closest SiPM to the true average point
     min_dist = 1.e9
@@ -131,3 +142,40 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
     reco_z    = reco_cart[2]
 
     return reco_r, reco_phi, reco_z, reco_cart
+
+
+def select_coincidences(current_charge: Dict[int, Dict[int, Waveform]], charge_range: Tuple[float, float], sens_pos: Dict[int, Tuple[float, float, float]]) -> Sequence[Tuple[float, float, float, float]], Sequence[Tuple[float, float, float, float]]:
+
+    sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, threshold=2)
+    if len(sns_over_thr) == 0:
+        return [], []
+
+    ### Find the SiPM with maximum charge. The set if sensors around it are labelled as 1
+    ### The sensors on the opposite emisphere are labelled as 2.
+    max_sns = sns_over_thr[np.argmax(charges_over_thr)]
+    max_pos = sens_pos[max_sns]
+
+    sipms1, sipms2 = [], []
+
+    for sns_id, charge in zip(sns_over_thr, charges_over_thr):
+        pos = sens_pos[sns_id]
+        scalar_prod = sum(a*b for a, b in zip(pos, max_pos))
+        pos_q = (pos[0], pos[1], pos[2], charge)
+        if scalar_prod > 0.:
+            sipms1.append(np.array(pos_q))
+        else:
+            sipms2.append(np.array(pos_q))
+
+    if len(sipms1) == 0 or len(sipms2) == 0:
+        return [], []
+
+    sipms1 = np.array(sipms1)
+    sipms2 = np.array(sipms2)
+
+    q1 = sum(sipms1[:,3])
+    q2 = sum(sipms2[:,3])
+
+    if (q1>charge_range[0]) & (q1<charge_range[1]) & (q2>charge_range[0]) & (q2<charge_range[1]):
+        return sipms1, sipms2
+    else:
+        return [], []
