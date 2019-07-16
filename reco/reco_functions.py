@@ -6,7 +6,7 @@ import sys
 import os
 
 from invisible_cities.core.system_of_units_c import units
-from invisible_cities.evm.event_model import Waveform
+from invisible_cities.evm.event_model import Waveform, MCParticle
 
 from   antea.utils.table_functions import load_rpos
 import antea.database.load_db as db
@@ -144,11 +144,11 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
     return reco_r, reco_phi, reco_z, reco_cart
 
 
-def select_coincidences(current_charge: Dict[int, Dict[int, Waveform]], charge_range: Tuple[float, float], sens_pos: Dict[int, Tuple[float, float, float]]) -> Sequence[Tuple[float, float, float, float]], Sequence[Tuple[float, float, float, float]]:
+def select_coincidences(current_charge: Dict[int, Dict[int, Waveform]], charge_range: Tuple[float, float], sens_pos: Dict[int, Tuple[float, float, float]], particle_dict: Dict[int, Sequence[MCParticle]]) -> Sequence[Tuple[float, float, float, float]], Sequence[Tuple[float, float, float, float]]:
 
     sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, threshold=2)
     if len(sns_over_thr) == 0:
-        return [], []
+        return [], [], None, None
 
     ### Find the SiPM with maximum charge. The set if sensors around it are labelled as 1
     ### The sensors on the opposite emisphere are labelled as 2.
@@ -167,7 +167,7 @@ def select_coincidences(current_charge: Dict[int, Dict[int, Waveform]], charge_r
             sipms2.append(np.array(pos_q))
 
     if len(sipms1) == 0 or len(sipms2) == 0:
-        return [], []
+        return [], [], None, None
 
     sipms1 = np.array(sipms1)
     sipms2 = np.array(sipms2)
@@ -175,7 +175,60 @@ def select_coincidences(current_charge: Dict[int, Dict[int, Waveform]], charge_r
     q1 = sum(sipms1[:,3])
     q2 = sum(sipms2[:,3])
 
-    if (q1>charge_range[0]) & (q1<charge_range[1]) & (q2>charge_range[0]) & (q2<charge_range[1]):
-        return sipms1, sipms2
+    sel1 = (q1 > charge_range[0]) & (q1 < charge_range[1])
+    sel2 = (q2 > charge_range[0]) & (q2 < charge_range[1])
+    if not sel1 or not sel2:
+        return [], [], None, None
+
+
+    ## find the first interactions of the primary gamma(s)
+    tvertex_pos = tvertex_neg = -1
+    min_pos, min_neg = None, None
+
+    for _, part in particle_dict.items():
+        if part.name == 'e-':
+            if part.initial_volume == 'ACTIVE' and part.final_volume == 'ACTIVE':
+                mother = part_dict[part.mother_indx]
+                if np.isclose(mother.E*1000., 510.999, atol=1.e-3) and mother.primary:
+                    if mother.p[1] > 0.:
+                        if tvertex_pos < 0 or part.initial_vertex[3] < tvertex_pos:
+                            min_pos     = part.initial_vertex[0:3]
+                            tvertex_pos = part.initial_vertex[3]
+                    else:
+                        if tvertex_neg < 0 or part.initial_vertex[3] < tvertex_neg:
+                            min_neg     = part.initial_vertex[0:3]
+                            tvertex_neg = part.initial_vertex[3]
+
+
+        elif part.name == 'gamma' and part.primary:
+            if len(part.hits) > 0:
+                if part.p[1] > 0.:
+                    times         = [h.time for h in part.hits]
+                    hit_positions = [h.pos for h in part.hits]
+                    min_time      = min(times)
+                    if min_time < tvertex_pos:
+                        min_pos     = hit_positions[times.index(min_time)]
+                        tvertex_pos = min_time
+                else:
+                    times         = [h.time for h in part.hits]
+                    hit_positions = [h.pos for h in part.hits]
+                    min_time      = min(times)
+                    if min_time < tvertex_neg:
+                        min_neg     = hit_positions[times.index(min_time)]
+                        tvertex_neg = min_time
+
+    if min_pos is None or min_neg is None:
+        print("Cannot find two true gamma interactions for this event")
+        return [], [], None, None
+
+
+    pos_true1, pos_true2 = [], []
+    scalar_prod = sum(a*b for a, b in zip(min_pos, max_pos))
+    if scalar_prod > 0:
+        pos_true1 = min_pos
+        pos_true2 = min_neg
     else:
-        return [], []
+        pos_true1 = min_neg
+        pos_true2 = min_pos
+
+    return sipms1, sipms2, pos_true1, pos_true2
