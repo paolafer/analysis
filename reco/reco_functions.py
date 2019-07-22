@@ -97,9 +97,9 @@ def find_SiPMs_over_thresholds(current_charge, threshold):
     return filter_SiPMs_by_charge(sns_ids, tot_charges, threshold)
 
 
-def reconstruct_pos(sipms_info: Sequence[float, float, float, float], r_thr, phi_z_thr, rpos_table) -> (float, float, float):
+def reconstruct_pos(sipms_info: Sequence[Tuple[float, float, float, float]], r_thr: float, phi_z_thr: float, rpos_table: float) -> (float, float, float):
     sipms_info = np.array(sipms_info)
-    q = simps_info[:,3]
+    q = sipms_info[:,3]
 
     ### first, find R
     sel_r   = q > r_thr
