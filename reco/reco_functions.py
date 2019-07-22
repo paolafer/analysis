@@ -68,11 +68,18 @@ def calculate_phi_z_pos(pos, q, phi_z_thr):
 
     return np.arctan2(cartesian_pos[1], cartesian_pos[0]), cartesian_pos[2]
 
-def find_SiPMs_over_thresholds(current_charge, threshold):
 
-    sns_dict = list(current_charge.values())[0]
-    tot_charges = np.array(list(map(lambda x: sum(x.charges), list(sns_dict.values()))))
-    sns_ids = np.array(list(sns_dict.keys()))
+def calculate_mean_var_phi(phis, qs):
+    diff_sign = min(phis ) < 0 < max(phis)
+    if diff_sign & (np.abs(np.min(phis))>np.pi/2):
+        phis[phis<0] = np.pi + np.pi + phis[phis<0]
+    mean_phi = np.average(phis, weights=qs)
+    var_phi  = np.average((phis-mean_phi)**2, weights=qs)
+
+    return mean_phi, var_phi
+
+
+def filter_SiPMs_by_charge(sns_ids, tot_charges, threshold):
 
     indices_over_thr = (tot_charges > threshold)
     sns_over_thr = sns_ids[indices_over_thr]
@@ -80,6 +87,49 @@ def find_SiPMs_over_thresholds(current_charge, threshold):
 
     return sns_over_thr, charges_over_thr
 
+
+def find_SiPMs_over_thresholds(current_charge, threshold):
+
+    sns_dict = list(current_charge.values())[0]
+    tot_charges = np.array(list(map(lambda x: sum(x.charges), list(sns_dict.values()))))
+    sns_ids = np.array(list(sns_dict.keys()))
+
+    return filter_SiPMs_by_charge(sns_ids, tot_charges, threshold)
+
+
+def reconstruct_pos(sipms_info: Sequence[float, float, float, float], r_thr, phi_z_thr, rpos_table) -> (float, float, float):
+    sipms_info = np.array(sipms_info)
+    q = simps_info[:,3]
+
+    ### first, find R
+    sel_r   = q > r_thr
+    q_r     = q[sel_r]
+    sipms_r = sipms_info[sel_r]
+
+    if len(q_r) == 0:
+        return None, None, None
+
+    pos_phi = np.arctan2(sipms_r[:,1], sipms_r[:,0])
+    var_phi = None
+
+    mean_phi, var_phi = calculate_mean_var_phi(pos_phi, q_r)
+    reco_r   = rpos_table(np.sqrt(var_phi)).value
+
+    ### Now, find z and phi
+    sel_phi_z   = q > phi_z_thr
+    q_phi_z     = q[sel_phi_z]
+    sipms_phi_z = sipms_info[sel_phi_z]
+
+    if len(q_phi_z) == 0:
+        return None, None, None
+
+    pos_phi_z =  sipms_phi_z[:, 0:3]
+
+    reco_cart = barycenter_3D(pos_phi_z, q_phi_z)
+    reco_phi  = np.arctan2(reco_cart[1], reco_cart[0])
+    reco_z    = reco_cart[2]
+
+    return reco_r, reco_phi, reco_z
 
 
 def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: float, zphi_threshold:float, rpos_table, db) -> (float, float, float):
@@ -107,14 +157,9 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
         pos_phi.append(pos_cyl[1])
 
     pos_phi = np.array(pos_phi)
-
     var_phi = None
 
-    diff_sign = min(pos_phi ) < 0 < max(pos_phi)
-    if diff_sign & (np.abs(np.min(pos_phi))>np.pi/2):
-        pos_phi[pos_phi<0] = np.pi + np.pi + pos_phi[pos_phi<0]
-    mean_phi = np.average(pos_phi, weights=q)
-    var_phi  = np.average((pos_phi-mean_phi)**2, weights=q)
+    mean_phi, var_phi = calculate_mean_var_phi(pos_phi, q)
 
     ### Now, find z and phi
     sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, zphi_threshold)
