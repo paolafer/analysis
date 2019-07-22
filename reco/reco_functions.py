@@ -82,7 +82,7 @@ def find_SiPMs_over_thresholds(current_charge, threshold):
 
 
 
-def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: float, zphi_threshold:float, rpos_table, db) -> (float, float, float, Tuple[float, float, float]):
+def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: float, zphi_threshold:float, rpos_table, db) -> (float, float, float):
 
     ### read sensor positions from database
     DataSiPM = db.DataSiPM('petalo', 0)
@@ -92,7 +92,7 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
     sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, r_threshold)
 
     if len(charges_over_thr) == 0:
-        return
+        return None, None, None
 
     q = []
     pos_phi = []
@@ -106,6 +106,8 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
         q.append(charge)
         pos_phi.append(pos_cyl[1])
 
+    pos_phi = np.array(pos_phi)
+
     var_phi = None
 
     diff_sign = min(pos_phi ) < 0 < max(pos_phi)
@@ -118,7 +120,7 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
     sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, zphi_threshold)
 
     if len(charges_over_thr) == 0:
-        return
+        return None, None, None
 
 
     q   = []
@@ -141,7 +143,7 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
     reco_phi  = np.arctan2(reco_cart[1], reco_cart[0])
     reco_z    = reco_cart[2]
 
-    return reco_r, reco_phi, reco_z, reco_cart
+    return reco_r, reco_phi, reco_z
 
 
 def select_coincidences(current_charge: Dict[int, Dict[int, Waveform]], charge_range: Tuple[float, float], sens_pos: Dict[int, Tuple[float, float, float]], particle_dict: Dict[int, Sequence[MCParticle]]) -> Sequence[Tuple[float, float, float, float]], Sequence[Tuple[float, float, float, float]]:
