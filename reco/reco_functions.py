@@ -146,7 +146,7 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
     return reco_r, reco_phi, reco_z
 
 
-def select_coincidences(current_charge: Dict[int, Dict[int, Waveform]], charge_range: Tuple[float, float], sens_pos: Dict[int, Tuple[float, float, float]], particle_dict: Dict[int, Sequence[MCParticle]]) -> Sequence[Tuple[float, float, float, float]], Sequence[Tuple[float, float, float, float]]:
+def select_coincidences(current_charge: Dict[int, Dict[int, Waveform]], charge_range: Tuple[float, float], sens_pos: Dict[int, Tuple[float, float, float]], particle_dict: Dict[int, Sequence[MCParticle]]) -> (Sequence[Tuple[float, float, float, float]], Sequence[Tuple[float, float, float, float]]):
 
     sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, threshold=2)
     if len(sns_over_thr) == 0:
