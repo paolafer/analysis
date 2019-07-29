@@ -146,19 +146,14 @@ def reconstruct_pos(sipms_info: Sequence[Tuple[float, float, float, float]], r_t
     return reco_r, reco_phi, reco_z
 
 
-def find_phi_z_opening(current_charge: Dict[int, Dict[int, Waveform]], threshold: float)-> (float, float):
-
-    ### read sensor positions from database
-    DataSiPM = db.DataSiPM('petalo', 0)
-    DataSiPM_idx = DataSiPM.set_index('SensorID')
-
-    sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, r_threshold)
-
-    if len(charges_over_thr) == 0:
-        return None, None
-
-    phis = np.arctan2(DataSiPM_idx.loc[sns_over_thr].Y.values, DataSiPM_idx.loc[sns_over_thr].X.values)
-    zs   = DataSiPM_idx.loc[sns_over_thr].Z.values
+def find_phi_z_opening(sipms: Sequence[Tuple[float, float, float, float]])-> (float, float):
+    """
+    This function takes as an input a list of tetravectors (x, y, z, q) with
+    the position and charge of the SiPMs under consideration and returns the spread
+    of the sensor response in phi and z
+    """
+    phis = np.arctan2(sipms[:, 1], sipms[:, 0])
+    zs   = sipms[:, 2]
 
     phi_spread = calculate_phi_opening(phis)
     z_spread   = calculate_z_opening(zs)
