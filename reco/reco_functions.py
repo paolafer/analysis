@@ -79,6 +79,20 @@ def calculate_mean_var_phi(phis, qs):
     return mean_phi, var_phi
 
 
+def calculate_z_opening(zs):
+    delta_z = max(zs) - min(zs)
+
+    return delta_z
+
+
+def calculate_phi_opening(phis):
+    diff_sign = min(phis ) < 0 < max(phis)
+    if diff_sign & (np.abs(np.min(phis))>np.pi/2):
+        phis[phis<0] = np.pi + np.pi + phis[phis<0]
+
+    return max(phis) - min(phis)
+
+
 def filter_SiPMs_by_charge(sns_ids, tot_charges, threshold):
 
     indices_over_thr = (tot_charges > threshold)
@@ -130,6 +144,26 @@ def reconstruct_pos(sipms_info: Sequence[Tuple[float, float, float, float]], r_t
     reco_z    = reco_cart[2]
 
     return reco_r, reco_phi, reco_z
+
+
+def find_phi_z_opening(current_charge: Dict[int, Dict[int, Waveform]], threshold: float)-> (float, float):
+
+    ### read sensor positions from database
+    DataSiPM = db.DataSiPM('petalo', 0)
+    DataSiPM_idx = DataSiPM.set_index('SensorID')
+
+    sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, r_threshold)
+
+    if len(charges_over_thr) == 0:
+        return None, None
+
+    phis = np.arctan2(DataSiPM_idx.loc[sns_over_thr].Y.values, DataSiPM_idx.loc[sns_over_thr].X.values)
+    zs   = DataSiPM_idx.loc[sns_over_thr].Z.values
+
+    phi_spread = calculate_phi_opening(phis)
+    z_spread   = calculate_z_opening(zs)
+
+    return phi_spread, z_spread
 
 
 def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: float, zphi_threshold:float, rpos_table, db) -> (float, float, float):
@@ -235,7 +269,7 @@ def select_coincidences(current_charge: Dict[int, Dict[int, Waveform]], charge_r
     for _, part in particle_dict.items():
         if part.name == 'e-':
             if part.initial_volume == 'ACTIVE' and part.final_volume == 'ACTIVE':
-                mother = part_dict[part.mother_indx]
+                mother = particle_dict[part.mother_indx]
                 if np.isclose(mother.E*1000., 510.999, atol=1.e-3) and mother.primary:
                     if mother.p[1] > 0.:
                         if tvertex_pos < 0 or part.initial_vertex[3] < tvertex_pos:
