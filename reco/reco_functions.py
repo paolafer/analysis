@@ -178,22 +178,11 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
     if len(charges_over_thr) == 0:
         return None, None, None
 
-    q = []
-    pos_phi = []
-
-    for sns_id, charge in zip(sns_over_thr, charges_over_thr):
-        x = DataSiPM_idx.loc[sns_id].X
-        y = DataSiPM_idx.loc[sns_id].Y
-        z = DataSiPM_idx.loc[sns_id].Z
-
-        pos_cyl = (np.sqrt(x*x + y*y), np.arctan2(y, x), z)
-        q.append(charge)
-        pos_phi.append(pos_cyl[1])
-
+    pos_phi = np.arctan2(DataSiPM_idx.loc[sns_over_thr].Y.values, DataSiPM_idx.loc[sns_over_thr].X.values)
     pos_phi = np.array(pos_phi)
     var_phi = None
 
-    mean_phi, var_phi = calculate_mean_var_phi(pos_phi, q)
+    mean_phi, var_phi = calculate_mean_var_phi(pos_phi, charges_over_thr)
 
     ### Now, find z and phi
     sns_over_thr, charges_over_thr = find_SiPMs_over_thresholds(current_charge, zphi_threshold)
@@ -202,23 +191,10 @@ def find_reco_pos(current_charge: Dict[int, Dict[int, Waveform]], r_threshold: f
         return None, None, None
 
 
-    q   = []
-    pos = []
-
-    for sns_id, charge in zip(sns_over_thr, charges_over_thr):
-        x = DataSiPM_idx.loc[sns_id].X
-        y = DataSiPM_idx.loc[sns_id].Y
-        z = DataSiPM_idx.loc[sns_id].Z
-
-        pos_cart = [x, y, z]
-        pos_cyl  = (np.sqrt(x*x + y*y), np.arctan2(y, x), z)
-
-        pos.append(pos_cart)
-        q.append(charge)
-
+    pos = np.array(DataSiPM_idx.loc[sns_over_thr].X.values, DataSiPM_idx.loc[sns_over_thr].Y.values, DataSiPM_idx.loc[sns_over_thr].Z.values).transpose()
 
     reco_r    = rpos_table(np.sqrt(var_phi)).value
-    reco_cart = barycenter_3D(pos, q)
+    reco_cart = barycenter_3D(pos, charges_over_thr)
     reco_phi  = np.arctan2(reco_cart[1], reco_cart[0])
     reco_z    = reco_cart[2]
 
